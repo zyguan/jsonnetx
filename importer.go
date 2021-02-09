@@ -19,7 +19,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func MakeImporter(rootFrom string, vendorPath string, jsonnetPath ...string) jsonnet.Importer {
+func MakeImporter(rootFrom string, vendorPath string, jsonnetPaths ...string) jsonnet.Importer {
 	t := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -31,9 +31,9 @@ func MakeImporter(rootFrom string, vendorPath string, jsonnetPath ...string) jso
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
-	jpath := make([]string, 0, len(jsonnetPath)+1)
+	jpath := make([]string, 0, len(jsonnetPaths)+1)
 	jpath = append(jpath, vendorPath)
-	jpath = append(jpath, jsonnetPath...)
+	jpath = append(jpath, jsonnetPaths...)
 
 	return &importer{
 		rootFrom:   rootFrom,
