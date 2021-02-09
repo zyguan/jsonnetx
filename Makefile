@@ -1,8 +1,12 @@
 GO := CGO_ENABLED=0 go
+IMAGE_TAG ?= latest
 
 .PHONY: FORCE build clean
 
 build: bin/jx bin/jxs
+
+image:
+	docker build -t zyguan/jsonnetx:$(IMAGE_TAG) .
 
 clean:
 	rm -rf bin/
