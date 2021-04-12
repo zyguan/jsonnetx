@@ -143,7 +143,7 @@ func main() {
 	vm := jsonnet.MakeVM()
 	setJsonnetParams(vm)
 	vm.Importer(jsonnetx.MakeImporter(from, vendorPath, jsonnetPaths()...))
-	result, err := vm.EvaluateAnonymousSnippet(from, content)
+	result, err := vm.EvaluateSnippet(from, content)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: render input: %v\n", err.Error())
 		os.Exit(1)
