@@ -6,6 +6,7 @@ require (
 	github.com/fatih/color v1.9.0
 	github.com/go-logr/logr v0.4.0
 	github.com/google/go-jsonnet v0.17.0
+	github.com/jmespath/go-jmespath v0.4.0
 	github.com/jsonnet-bundler/jsonnet-bundler v0.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/pflag v1.0.5

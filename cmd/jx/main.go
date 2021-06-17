@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/google/go-jsonnet"
+	"github.com/jmespath/go-jmespath"
 	"github.com/spf13/pflag"
 	"github.com/zyguan/jsonnetx"
 	"gopkg.in/yaml.v2"
@@ -25,6 +26,7 @@ var options struct {
 	help    bool
 	kube    bool
 	output  string
+	jexpr   string
 	jpath   []string
 	extStr  map[string]string
 	extCode map[string]string
@@ -48,6 +50,7 @@ func initFlags() {
 	pflag.BoolVarP(&options.help, "help", "h", false, "This message")
 	pflag.BoolVarP(&options.kube, "kube-stream", "k", false, "Write output as a YAML stream of kubernetes resources")
 	pflag.StringVarP(&options.output, "output-file", "o", "", "Write to the output file rather than stdout")
+	pflag.StringVarP(&options.jexpr, "jexpr", "e", "", "JMESPath expression for extracting resources")
 	pflag.StringArrayVarP(&options.jpath, "jpath", "J", []string{}, "Specify an additional library search dir (right-most wins)")
 	pflag.StringToStringVarP(&options.extStr, "ext-str", "V", map[string]string{}, "Specify values of external variables as strings")
 	pflag.StringToStringVar(&options.extCode, "ext-code", map[string]string{}, "Specify values of external variables as code")
@@ -148,6 +151,26 @@ func main() {
 		fmt.Fprintf(os.Stderr, "ERROR: render input: %v\n", err.Error())
 		os.Exit(1)
 	}
+	// extract by expr
+	var root interface{}
+	if len(options.jexpr) > 0 {
+		err = json.Unmarshal([]byte(result), &root)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: decode result: %v\n", err)
+			os.Exit(1)
+		}
+		root, err = jmespath.Search(options.jexpr, root)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: extract %q from result: %v\n", options.jexpr, err)
+			os.Exit(1)
+		}
+		resultBytes, err := json.Marshal(root)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: encode result: %v\n", err)
+			os.Exit(1)
+		}
+		result = string(resultBytes)
+	}
 
 	// open output
 	var out io.Writer
@@ -168,10 +191,12 @@ func main() {
 		fmt.Fprintln(out, result)
 		return
 	}
-	var root interface{}
-	if err = json.Unmarshal([]byte(result), &root); err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: decode result: %v\n", err)
-		os.Exit(1)
+	if root == nil {
+		err = json.Unmarshal([]byte(result), &root)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: decode result: %v\n", err)
+			os.Exit(1)
+		}
 	}
 	enc := yaml.NewEncoder(out)
 	for _, manifest := range jsonnetx.ExtractManifestTo(nil, root) {
