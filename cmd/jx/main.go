@@ -25,6 +25,7 @@ import (
 var options struct {
 	help    bool
 	kube    bool
+	yaml    bool
 	output  string
 	jexpr   string
 	jpath   []string
@@ -49,6 +50,7 @@ func addGoFlag(name string, full string, short string) {
 func initFlags() {
 	pflag.BoolVarP(&options.help, "help", "h", false, "This message")
 	pflag.BoolVarP(&options.kube, "kube-stream", "k", false, "Write output as a YAML stream of kubernetes resources")
+	pflag.BoolVar(&options.yaml, "yaml", false, "Write output in YAML format")
 	pflag.StringVarP(&options.output, "output-file", "o", "", "Write to the output file rather than stdout")
 	pflag.StringVarP(&options.jexpr, "jexpr", "e", "", "JMESPath expression for extracting resources")
 	pflag.StringArrayVarP(&options.jpath, "jpath", "J", []string{}, "Specify an additional library search dir (right-most wins)")
@@ -151,14 +153,13 @@ func main() {
 		fmt.Fprintf(os.Stderr, "ERROR: render input: %v\n", err.Error())
 		os.Exit(1)
 	}
-	// extract by expr
 	var root interface{}
+	if err = json.Unmarshal([]byte(result), &root); err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: decode result: %v\n", err)
+		os.Exit(1)
+	}
+	// extract by expr
 	if len(options.jexpr) > 0 {
-		err = json.Unmarshal([]byte(result), &root)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: decode result: %v\n", err)
-			os.Exit(1)
-		}
 		root, err = jmespath.Search(options.jexpr, root)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: extract %q from result: %v\n", options.jexpr, err)
@@ -188,15 +189,12 @@ func main() {
 
 	// write output
 	if !options.kube {
-		fmt.Fprintln(out, result)
-		return
-	}
-	if root == nil {
-		err = json.Unmarshal([]byte(result), &root)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: decode result: %v\n", err)
-			os.Exit(1)
+		if options.yaml {
+			yaml.NewEncoder(out).Encode(root)
+		} else {
+			fmt.Fprintln(out, result)
 		}
+		return
 	}
 	enc := yaml.NewEncoder(out)
 	for _, manifest := range jsonnetx.ExtractManifestTo(nil, root) {
