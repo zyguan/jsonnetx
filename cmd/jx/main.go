@@ -80,10 +80,7 @@ func setJsonnetParams(vm *jsonnet.VM) {
 }
 
 func readInput() (string, string) {
-	if pflag.NArg() == 0 {
-		fmt.Fprintln(os.Stderr, "ERROR: must give filename")
-		os.Exit(1)
-	} else if pflag.NArg() > 1 {
+	if pflag.NArg() > 1 {
 		fmt.Fprintln(os.Stderr, "ERROR: only one filename is allowed")
 		os.Exit(1)
 	}
@@ -91,9 +88,18 @@ func readInput() (string, string) {
 		raw []byte
 		err error
 	)
+	if pflag.NArg() == 0 {
+		raw, err = ioutil.ReadAll(os.Stdin)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: read from stdin: %v\n", err)
+			os.Exit(1)
+		}
+		return "<stdin>", string(raw)
+	}
 	url := pflag.Arg(0)
 	if strings.HasPrefix(url, "http") {
-		resp, err := http.Get(url)
+		var resp *http.Response
+		resp, err = http.Get(url)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: http get %q: %v\n", url, err)
 			os.Exit(1)
